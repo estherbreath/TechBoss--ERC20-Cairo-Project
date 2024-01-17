@@ -2,7 +2,7 @@
 
 #[starknet::contract]
 mod TechBossERC20{
-    //libraries
+    //libraries and variables
     use starknet::ContractAddress;
     use starknet::get_caller_address;
     use starknet::contract_sddress_const; //like an address zero
