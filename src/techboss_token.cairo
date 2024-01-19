@@ -133,5 +133,58 @@ mod TechBossERC20 {
                 caller, spender, self.allowances.read((caller, spender)) - subtracted_value
             );
     }
+
+     #[generate_trait]
+    impl HelperImpl of HelperTrait {
+        fn transfer_helper(
+            ref self: ContractState,
+            sender: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256
+        ) {
+            let sender_balance = self.balance_of(sender);
+
+            assert(!sender.is_zero(), 'transfer from 0');
+            assert(!recipient.is_zero(), 'transfer to 0');
+            assert(sender_balance >= amount, 'Insufficient fund');
+            self.balances.write(sender, self.balances.read(sender) - amount);
+            self.balances.write(recipient, self.balances.read(recipient) + amount);
+            true;
+
+            self.emit(Transfer { from: sender, to: recipient, value: amount, });
+        }
+
+        fn approve_helper(
+            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
+        ) {
+            assert(!owner.is_zero(), 'approve from 0');
+            assert(!spender.is_zero(), 'approve to 0');
+
+            self.allowances.write((owner, spender), amount);
+
+            self.emit(Approval { owner, spender, value: amount, })
+        }
+
+        fn spend_allowance(
+            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
+        ) {
+            // First, read the amount authorized by owner to spender
+            let current_allowance = self.allowances.read((owner, spender));
+
+            // define a variable ONES_MASK of type u128
+            let ONES_MASK = 0xfffffffffffffffffffffffffffffff_u128;
+
+            // to determine whether the authorization is unlimited, 
+
+            let is_unlimited_allowance = current_allowance.low == ONES_MASK
+                && current_allowance
+                    .high == ONES_MASK; //equivalent to type(uint256).max in Solidity.
+
+            // This is also a way to save gas, because if the authorized amount is the maximum value of u256, theoretically, this amount cannot be spent.
+            if !is_unlimited_allowance {
+                self.approve_helper(owner, spender, current_allowance - amount);
+            }
+        }
+    }
 }
 
